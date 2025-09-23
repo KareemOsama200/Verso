@@ -1,0 +1,65 @@
+# Core Django
+Django>=4.2,<4.3
+django-environ==0.11.2
+python-decouple==3.8
+
+# Database
+psycopg2-binary==2.9.9
+
+# Authentication & Security
+django-allauth==0.63.3
+django-crispy-forms==2.3
+crispy-tailwind==1.0.3
+
+# Image & File handling
+Pillow==10.4.0
+django-storages==1.14.4
+
+# API & Serialization
+djangorestframework==3.15.2
+django-cors-headers==4.4.0
+
+# Admin improvements
+django-admin-interface==0.28.8
+
+# Rich text editor
+django-ckeditor==6.7.1
+
+# Background tasks
+celery==5.4.0
+redis==5.0.8
+
+# Testing
+pytest==8.3.3
+pytest-django==4.9.0
+factory-boy==3.3.1
+faker==28.4.1
+
+# Development tools
+django-debug-toolbar==4.4.6
+django-extensions==3.2.3
+ipython==8.27.0
+
+# Production server
+gunicorn==23.0.0
+whitenoise==6.7.0
+
+# Utilities
+python-slugify==8.0.4
+django-countries==7.6.1
+django-phonenumber-field==8.0.0
+phonenumbers==8.13.45
+
+# Map integration
+folium==0.17.0
+geopy==2.4.1
+
+# Export functionality
+pandas==2.2.3
+openpyxl==3.1.5
+
+# Payment (optional)
+stripe==10.10.0
+
+# Timezone support
+pytz==2024.2

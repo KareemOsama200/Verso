@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="relative h-[600px] bg-gray-900">
+    <div class="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent"></div>
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
+        <div class="text-white max-w-2xl">
+            <h1 class="text-5xl font-bold mb-4 animate-fade-in">
+                New Collection <br>
+                <span class="text-accent">Summer 2024</span>
+            </h1>
+            <p class="text-xl mb-8 animate-slide-up">
+                Discover the latest trends in fashion. Premium quality, sustainable materials, and timeless designs.
+            </p>
+            <div class="space-x-4 animate-slide-up">
+                <a href="{% url 'products:list' %}" class="inline-block bg-white text-primary px-8 py-3 font-semibold rounded-md hover:bg-accent hover:text-white transition-all duration-300">
+                    Shop Now
+                </a>
+                <a href="{% url 'products:new' %}" class="inline-block border-2 border-white text-white px-8 py-3 font-semibold rounded-md hover:bg-white hover:text-primary transition-all duration-300">
+                    View New Arrivals
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Categories Section -->
+<section class="py-16 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 class="text-3xl font-bold text-center mb-12">Shop by Category</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {% for category in categories %}
+            <a href="{% url 'products:category' category.slug %}" class="group relative overflow-hidden rounded-lg shadow-lg h-80">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                <img src="https://via.placeholder.com/400x500" alt="{{ category.name }}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                <div class="absolute bottom-0 left-0 right-0 p-6 text-white">
+                    <h3 class="text-2xl font-bold mb-2">{{ category.name }}</h3>
+                    <p class="text-sm opacity-90">{{ category.description|truncatewords:15 }}</p>
+                    <span class="inline-block mt-4 font-semibold border-b-2 border-accent">Shop Now →</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Featured Products -->
+{% if featured_products %}
+<section class="py-16 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 class="text-3xl font-bold text-center mb-12">Featured Products</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {% for product in featured_products %}
+            <div class="product-card bg-white rounded-lg shadow-sm overflow-hidden">
+                <a href="{% url 'products:detail' product.slug %}" class="block relative">
+                    {% if product.is_new %}
+                    <span class="absolute top-2 left-2 bg-accent text-white text-xs font-semibold px-2 py-1 rounded">NEW</span>
+                    {% endif %}
+                    {% if product.is_on_sale %}
+                    <span class="absolute top-2 right-2 bg-danger text-white text-xs font-semibold px-2 py-1 rounded">-{{ product.discount_percentage|floatformat:0 }}%</span>
+                    {% endif %}
+                    <img src="https://via.placeholder.com/300x400" alt="{{ product.name }}" class="w-full h-80 object-cover">
+                </a>
+                <div class="p-4">
+                    <h3 class="font-semibold text-lg mb-2">
+                        <a href="{% url 'products:detail' product.slug %}" class="hover:text-accent transition-colors">
+                            {{ product.name }}
+                        </a>
+                    </h3>
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            {% if product.is_on_sale %}
+                            <span class="text-gray-400 line-through text-sm">${{ product.base_price }}</span>
+                            <span class="text-xl font-bold text-danger ml-2">${{ product.current_price|floatformat:2 }}</span>
+                            {% else %}
+                            <span class="text-xl font-bold">${{ product.base_price }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="flex items-center text-yellow-400">
+                            {% for i in "12345"|make_list %}
+                                {% if i|add:"0" <= product.rating|floatformat:"0" %}
+                                    <i class="fas fa-star text-sm"></i>
+                                {% else %}
+                                    <i class="far fa-star text-sm"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <button onclick="addToCart('{{ product.id }}')" class="w-full bg-primary text-white py-2 rounded-md hover:bg-accent transition-colors btn-hover">
+                        Add to Cart
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="text-center mt-8">
+            <a href="{% url 'products:list' %}" class="inline-block bg-white border-2 border-primary text-primary px-8 py-3 font-semibold rounded-md hover:bg-primary hover:text-white transition-all duration-300">
+                View All Products
+            </a>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- New Arrivals -->
+{% if new_arrivals %}
+<section class="py-16 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 class="text-3xl font-bold text-center mb-12">New Arrivals</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {% for product in new_arrivals %}
+            <div class="product-card bg-white rounded-lg shadow-sm overflow-hidden">
+                <a href="{% url 'products:detail' product.slug %}" class="block relative">
+                    <span class="absolute top-2 left-2 bg-accent text-white text-xs font-semibold px-2 py-1 rounded">NEW</span>
+                    <img src="https://via.placeholder.com/300x400" alt="{{ product.name }}" class="w-full h-80 object-cover">
+                </a>
+                <div class="p-4">
+                    <h3 class="font-semibold text-lg mb-2">
+                        <a href="{% url 'products:detail' product.slug %}" class="hover:text-accent transition-colors">
+                            {{ product.name }}
+                        </a>
+                    </h3>
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xl font-bold">${{ product.current_price|floatformat:2 }}</span>
+                        <button onclick="addToWishlist('{{ product.id }}')" class="text-gray-400 hover:text-danger transition-colors">
+                            <i class="far fa-heart"></i>
+                        </button>
+                    </div>
+                    <button onclick="addToCart('{{ product.id }}')" class="w-full bg-primary text-white py-2 rounded-md hover:bg-accent transition-colors btn-hover">
+                        Add to Cart
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Features Section -->
+<section class="py-16 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div class="text-center">
+                <div class="bg-white rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4 shadow-md">
+                    <i class="fas fa-shipping-fast text-2xl text-accent"></i>
+                </div>
+                <h3 class="font-semibold mb-2">Fast Shipping</h3>
+                <p class="text-sm text-gray-600">Free delivery on orders over $50</p>
+            </div>
+            <div class="text-center">
+                <div class="bg-white rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4 shadow-md">
+                    <i class="fas fa-shield-alt text-2xl text-accent"></i>
+                </div>
+                <h3 class="font-semibold mb-2">Secure Payment</h3>
+                <p class="text-sm text-gray-600">100% secure transactions</p>
+            </div>
+            <div class="text-center">
+                <div class="bg-white rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4 shadow-md">
+                    <i class="fas fa-undo text-2xl text-accent"></i>
+                </div>
+                <h3 class="font-semibold mb-2">Easy Returns</h3>
+                <p class="text-sm text-gray-600">30-day return policy</p>
+            </div>
+            <div class="text-center">
+                <div class="bg-white rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4 shadow-md">
+                    <i class="fas fa-headset text-2xl text-accent"></i>
+                </div>
+                <h3 class="font-semibold mb-2">24/7 Support</h3>
+                <p class="text-sm text-gray-600">Dedicated customer service</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+function addToCart(productId) {
+    // This would be an AJAX call to add to cart
+    fetch(`/cart/add/${productId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ quantity: 1 })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update cart counter
+            alert('Product added to cart!');
+        }
+    });
+}
+
+function addToWishlist(productId) {
+    // This would be an AJAX call to add to wishlist
+    alert('Added to wishlist!');
+}
+</script>
+{% endblock %}

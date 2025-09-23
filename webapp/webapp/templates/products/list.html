@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+
+{% block title %}Shop - {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold">Shop All Products</h1>
+        <p class="text-gray-600 mt-2">Discover our complete collection</p>
+    </div>
+    
+    <!-- Filters and Sorting -->
+    <div class="flex flex-col md:flex-row justify-between mb-8">
+        <!-- Filters -->
+        <div class="flex flex-wrap gap-2 mb-4 md:mb-0">
+            <select class="px-4 py-2 border rounded-md" onchange="filterProducts(this)">
+                <option value="">All Categories</option>
+                {% for category in categories %}
+                <option value="{{ category.slug }}" {% if current_category == category.slug %}selected{% endif %}>
+                    {{ category.name }}
+                </option>
+                {% endfor %}
+            </select>
+            
+            <select class="px-4 py-2 border rounded-md" onchange="filterByGender(this)">
+                <option value="">All Genders</option>
+                <option value="male">Men</option>
+                <option value="female">Women</option>
+                <option value="unisex">Unisex</option>
+                <option value="kids">Kids</option>
+            </select>
+        </div>
+        
+        <!-- Sorting -->
+        <div>
+            <select class="px-4 py-2 border rounded-md" onchange="sortProducts(this)">
+                <option value="-created_at" {% if current_sort == '-created_at' %}selected{% endif %}>Newest First</option>
+                <option value="price_low" {% if current_sort == 'price_low' %}selected{% endif %}>Price: Low to High</option>
+                <option value="price_high" {% if current_sort == 'price_high' %}selected{% endif %}>Price: High to Low</option>
+                <option value="name" {% if current_sort == 'name' %}selected{% endif %}>Name: A-Z</option>
+            </select>
+        </div>
+    </div>
+    
+    <!-- Products Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {% for product in products %}
+        <div class="product-card bg-white rounded-lg shadow-sm overflow-hidden">
+            <a href="{% url 'products:detail' product.slug %}" class="block relative">
+                {% if product.is_new %}
+                <span class="absolute top-2 left-2 bg-accent text-white text-xs font-semibold px-2 py-1 rounded z-10">NEW</span>
+                {% endif %}
+                {% if product.is_on_sale %}
+                <span class="absolute top-2 right-2 bg-danger text-white text-xs font-semibold px-2 py-1 rounded z-10">-{{ product.discount_percentage|floatformat:0 }}%</span>
+                {% endif %}
+                <div class="aspect-w-3 aspect-h-4">
+                    <img src="https://via.placeholder.com/300x400" alt="{{ product.name }}" class="w-full h-80 object-cover hover:scale-105 transition-transform duration-300">
+                </div>
+            </a>
+            <div class="p-4">
+                <h3 class="font-semibold text-lg mb-2">
+                    <a href="{% url 'products:detail' product.slug %}" class="hover:text-accent transition-colors">
+                        {{ product.name }}
+                    </a>
+                </h3>
+                <p class="text-sm text-gray-600 mb-3">{{ product.short_description|truncatewords:10 }}</p>
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        {% if product.is_on_sale %}
+                        <span class="text-gray-400 line-through text-sm">${{ product.base_price }}</span>
+                        <span class="text-xl font-bold text-danger ml-2">${{ product.current_price|floatformat:2 }}</span>
+                        {% else %}
+                        <span class="text-xl font-bold">${{ product.base_price }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="quickView('{{ product.id }}')" class="text-gray-400 hover:text-primary transition-colors">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button onclick="addToWishlist('{{ product.id }}')" class="text-gray-400 hover:text-danger transition-colors">
+                            <i class="far fa-heart"></i>
+                        </button>
+                    </div>
+                </div>
+                <button onclick="addToCart('{{ product.id }}')" class="w-full bg-primary text-white py-2 rounded-md hover:bg-accent transition-colors">
+                    Add to Cart
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full text-center py-12">
+            <p class="text-gray-500">No products found matching your criteria.</p>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="flex justify-center mt-8">
+        <nav class="flex space-x-2">
+            {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}" class="px-4 py-2 bg-white border rounded-md hover:bg-gray-50">Previous</a>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <span class="px-4 py-2 bg-primary text-white rounded-md">{{ num }}</span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <a href="?page={{ num }}" class="px-4 py-2 bg-white border rounded-md hover:bg-gray-50">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}" class="px-4 py-2 bg-white border rounded-md hover:bg-gray-50">Next</a>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function filterProducts(select) {
+    const category = select.value;
+    const url = new URL(window.location);
+    if (category) {
+        url.searchParams.set('category', category);
+    } else {
+        url.searchParams.delete('category');
+    }
+    window.location = url;
+}
+
+function filterByGender(select) {
+    const gender = select.value;
+    const url = new URL(window.location);
+    if (gender) {
+        url.searchParams.set('gender', gender);
+    } else {
+        url.searchParams.delete('gender');
+    }
+    window.location = url;
+}
+
+function sortProducts(select) {
+    const sort = select.value;
+    const url = new URL(window.location);
+    url.searchParams.set('sort', sort);
+    window.location = url;
+}
+
+function addToCart(productId) {
+    // Add to cart logic
+    alert('Added to cart!');
+}
+
+function addToWishlist(productId) {
+    // Add to wishlist logic
+    alert('Added to wishlist!');
+}
+
+function quickView(productId) {
+    // Quick view modal logic
+    alert('Quick view coming soon!');
+}
+</script>
+{% endblock %}
