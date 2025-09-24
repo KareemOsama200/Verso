@@ -1,0 +1,400 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ product.name }} - {{ SITE_NAME }}{% endblock %}
+
+{% block extra_head %}
+<!-- Schema.org Product JSON-LD -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org/",
+  "@type": "Product",
+  "name": "{{ product.name }}",
+  "image": "{{ product.main_image.image.url|default:'' }}",
+  "description": "{{ product.short_description }}",
+  "sku": "{{ product.sku }}",
+  "brand": {
+    "@type": "Brand",
+    "name": "{{ product.brand.name|default:'Verso' }}"
+  },
+  "offers": {
+    "@type": "Offer",
+    "url": "{{ request.build_absolute_uri }}",
+    "priceCurrency": "USD",
+    "price": "{{ product.current_price }}",
+    "availability": "{% if product.total_stock > 0 %}InStock{% else %}OutOfStock{% endif %}"
+  }
+}
+</script>
+
+<meta property="og:title" content="{{ product.meta_title|default:product.name }}">
+<meta property="og:description" content="{{ product.meta_description|default:product.short_description }}">
+<meta property="og:image" content="{{ product.main_image.image.url|default:'' }}">
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Breadcrumb -->
+    <nav class="mb-8">
+        <ol class="flex items-center space-x-2 text-sm text-gray-600">
+            <li><a href="{% url 'home' %}" class="hover:text-accent">Home</a></li>
+            <li><span class="mx-2">/</span></li>
+            <li><a href="{% url 'products:list' %}" class="hover:text-accent">Shop</a></li>
+            {% if product.category %}
+            <li><span class="mx-2">/</span></li>
+            <li><a href="{% url 'products:category' product.category.slug %}" class="hover:text-accent">{{ product.category.name }}</a></li>
+            {% endif %}
+            <li><span class="mx-2">/</span></li>
+            <li class="text-gray-900 font-medium">{{ product.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <!-- Product Images -->
+        <div>
+            <!-- Badges -->
+            <div class="absolute z-10 top-4 left-4 space-y-2">
+                {% if product.is_new %}
+                <span class="block bg-accent text-white text-sm font-semibold px-3 py-1 rounded">NEW</span>
+                {% endif %}
+                {% if product.is_on_sale %}
+                <span class="block bg-danger text-white text-sm font-semibold px-3 py-1 rounded">{{ product.discount_percentage|floatformat:0 }}% OFF</span>
+                {% endif %}
+            </div>
+
+            <!-- Main Image -->
+            <div class="relative mb-4">
+                <img id="main-image" src="{% if product.main_image %}{{ product.main_image.image.url }}{% else %}https://via.placeholder.com/600x800{% endif %}" 
+                     alt="{{ product.name }}" class="w-full rounded-lg">
+            </div>
+
+            <!-- Thumbnail Gallery -->
+            <div class="grid grid-cols-4 gap-2">
+                {% for image in product.images.all %}
+                <button onclick="changeMainImage('{{ image.image.url }}')" class="border-2 border-transparent hover:border-accent rounded-lg overflow-hidden">
+                    <img src="{{ image.image.url }}" alt="{{ image.alt_text|default:product.name }}" class="w-full h-24 object-cover">
+                </button>
+                {% empty %}
+                <button class="border-2 border-accent rounded-lg overflow-hidden">
+                    <img src="https://via.placeholder.com/150x150" alt="{{ product.name }}" class="w-full h-24 object-cover">
+                </button>
+                {% endfor %}
+                
+                {% if product.videos.exists %}
+                <button onclick="showVideo()" class="border-2 border-transparent hover:border-accent rounded-lg overflow-hidden relative">
+                    <img src="https://via.placeholder.com/150x150" alt="Video preview" class="w-full h-24 object-cover">
+                    <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
+                        <i class="fas fa-play text-white text-xl"></i>
+                    </div>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Product Information -->
+        <div>
+            <div class="mb-4">
+                <h1 class="text-3xl font-bold mb-2">{{ product.name }}</h1>
+                <p class="text-gray-600 mb-1">SKU: {{ product.sku }}</p>
+                {% if product.brand %}
+                <p class="text-gray-600">Brand: <a href="#" class="text-accent hover:underline">{{ product.brand.name }}</a></p>
+                {% endif %}
+            </div>
+
+            <!-- Rating -->
+            <div class="flex items-center mb-6">
+                <div class="flex text-yellow-400 mr-2">
+                    {% for i in "12345"|make_list %}
+                        {% if i|add:"0" <= product.rating|floatformat:"0" %}
+                            <i class="fas fa-star"></i>
+                        {% else %}
+                            <i class="far fa-star"></i>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <span class="text-gray-600">({{ product.review_count }} reviews)</span>
+            </div>
+
+            <!-- Price -->
+            <div class="mb-6">
+                {% if product.is_on_sale %}
+                <div class="flex items-baseline space-x-3">
+                    <span class="text-3xl font-bold text-danger">${{ product.current_price|floatformat:2 }}</span>
+                    <span class="text-xl text-gray-400 line-through">${{ product.base_price|floatformat:2 }}</span>
+                    <span class="text-sm text-success font-semibold">You save ${{ product.savings|floatformat:2 }}</span>
+                </div>
+                {% else %}
+                <span class="text-3xl font-bold">${{ product.base_price|floatformat:2 }}</span>
+                {% endif %}
+            </div>
+
+            <!-- Short Description -->
+            <p class="text-gray-700 mb-6">{{ product.short_description }}</p>
+
+            <!-- Product Form -->
+            <form method="post" action="{% url 'orders:add_to_cart' product.id %}" class="space-y-6">
+                {% csrf_token %}
+                
+                <!-- Size Selection -->
+                {% if available_sizes %}
+                <div>
+                    <label class="block text-sm font-medium mb-2">Size</label>
+                    <div class="flex flex-wrap gap-2">
+                        {% for size in available_sizes %}
+                        <label class="cursor-pointer">
+                            <input type="radio" name="size" value="{{ size }}" class="sr-only peer" required>
+                            <span class="block px-4 py-2 border rounded-md peer-checked:bg-primary peer-checked:text-white hover:border-accent transition-colors">
+                                {{ size }}
+                            </span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Color Selection -->
+                {% if available_colors %}
+                <div>
+                    <label class="block text-sm font-medium mb-2">Color</label>
+                    <div class="flex flex-wrap gap-2">
+                        {% for variant in variants %}
+                        <label class="cursor-pointer" title="{{ variant.color }}">
+                            <input type="radio" name="variant_id" value="{{ variant.id }}" class="sr-only peer" required>
+                            <span class="block w-10 h-10 rounded-full border-2 peer-checked:border-accent hover:scale-110 transition-transform"
+                                  style="background-color: {{ variant.color_hex|default:'#ccc' }}"></span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Quantity -->
+                <div>
+                    <label class="block text-sm font-medium mb-2">Quantity</label>
+                    <div class="flex items-center space-x-3">
+                        <button type="button" onclick="decrementQuantity()" class="w-10 h-10 border rounded-md hover:bg-gray-100">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <input type="number" name="quantity" id="quantity" value="1" min="1" max="{{ product.total_stock }}"
+                               class="w-20 text-center border rounded-md">
+                        <button type="button" onclick="incrementQuantity()" class="w-10 h-10 border rounded-md hover:bg-gray-100">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <span class="text-sm text-gray-600">({{ product.total_stock }} available)</span>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex space-x-4">
+                    <button type="submit" class="flex-1 bg-primary text-white py-3 rounded-md hover:bg-accent transition-colors font-semibold">
+                        <i class="fas fa-shopping-cart mr-2"></i> Add to Cart
+                    </button>
+                    <button type="button" onclick="addToWishlist('{{ product.id }}')" 
+                            class="px-6 py-3 border border-gray-300 rounded-md hover:border-accent transition-colors">
+                        <i class="{% if in_wishlist %}fas{% else %}far{% endif %} fa-heart text-danger"></i>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Product Info Tabs -->
+            <div class="mt-8 border-t pt-8">
+                <div class="border-b">
+                    <nav class="flex space-x-8">
+                        <button onclick="showTab('description')" class="tab-btn py-2 border-b-2 border-accent font-medium">Description</button>
+                        <button onclick="showTab('details')" class="tab-btn py-2 border-b-2 border-transparent hover:border-gray-300">Details</button>
+                        <button onclick="showTab('shipping')" class="tab-btn py-2 border-b-2 border-transparent hover:border-gray-300">Shipping</button>
+                        <button onclick="showTab('reviews')" class="tab-btn py-2 border-b-2 border-transparent hover:border-gray-300">Reviews</button>
+                    </nav>
+                </div>
+
+                <!-- Tab Content -->
+                <div id="description-tab" class="tab-content py-6">
+                    <div class="prose max-w-none">
+                        {{ product.description|safe }}
+                    </div>
+                </div>
+
+                <div id="details-tab" class="tab-content py-6 hidden">
+                    <dl class="space-y-3">
+                        {% if product.material %}
+                        <div class="flex">
+                            <dt class="font-medium w-32">Material:</dt>
+                            <dd>{{ product.material }}</dd>
+                        </div>
+                        {% endif %}
+                        {% if product.care_instructions %}
+                        <div class="flex">
+                            <dt class="font-medium w-32">Care:</dt>
+                            <dd>{{ product.care_instructions }}</dd>
+                        </div>
+                        {% endif %}
+                        {% if product.features %}
+                        <div class="flex">
+                            <dt class="font-medium w-32">Features:</dt>
+                            <dd>
+                                <ul class="list-disc list-inside">
+                                    {% for feature in product.features %}
+                                    <li>{{ feature }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </dd>
+                        </div>
+                        {% endif %}
+                    </dl>
+                </div>
+
+                <div id="shipping-tab" class="tab-content py-6 hidden">
+                    <ul class="space-y-2">
+                        <li><i class="fas fa-check text-success mr-2"></i> Free shipping on orders over $50</li>
+                        <li><i class="fas fa-check text-success mr-2"></i> Express shipping available</li>
+                        <li><i class="fas fa-check text-success mr-2"></i> International shipping to select countries</li>
+                        <li><i class="fas fa-check text-success mr-2"></i> 30-day return policy</li>
+                    </ul>
+                </div>
+
+                <div id="reviews-tab" class="tab-content py-6 hidden">
+                    {% if product.reviews.exists %}
+                        {% for review in product.reviews.all|slice:":5" %}
+                        <div class="border-b pb-4 mb-4">
+                            <div class="flex items-center mb-2">
+                                <div class="flex text-yellow-400 mr-2">
+                                    {% for i in "12345"|make_list %}
+                                        {% if i|add:"0" <= review.rating %}
+                                            <i class="fas fa-star text-sm"></i>
+                                        {% else %}
+                                            <i class="far fa-star text-sm"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                <span class="font-medium">{{ review.user.full_name }}</span>
+                                <span class="text-gray-500 text-sm ml-2">{{ review.created_at|date:"M d, Y" }}</span>
+                            </div>
+                            <h4 class="font-medium mb-1">{{ review.title }}</h4>
+                            <p class="text-gray-700">{{ review.comment }}</p>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-gray-500">No reviews yet. Be the first to review this product!</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Related Products -->
+    {% if related_products %}
+    <div class="mt-16">
+        <h2 class="text-2xl font-bold mb-8">You May Also Like</h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {% for related in related_products %}
+            <div class="product-card bg-white rounded-lg shadow-sm overflow-hidden">
+                <a href="{% url 'products:detail' related.slug %}">
+                    <img src="https://via.placeholder.com/300x400" alt="{{ related.name }}" class="w-full h-80 object-cover">
+                    <div class="p-4">
+                        <h3 class="font-semibold mb-2">{{ related.name }}</h3>
+                        <p class="text-xl font-bold">${{ related.current_price|floatformat:2 }}</p>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Quick View Modal (will be implemented separately) -->
+<div id="video-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg max-w-4xl w-full mx-4">
+        <div class="p-4 border-b flex justify-between items-center">
+            <h3 class="text-lg font-semibold">Product Video</h3>
+            <button onclick="closeVideoModal()" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="p-4">
+            {% if product.videos.exists %}
+            <video controls class="w-full">
+                <source src="{{ product.videos.first.video.url }}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Image gallery
+function changeMainImage(url) {
+    document.getElementById('main-image').src = url;
+}
+
+// Quantity selector
+function incrementQuantity() {
+    const input = document.getElementById('quantity');
+    const max = parseInt(input.getAttribute('max'));
+    const current = parseInt(input.value);
+    if (current < max) {
+        input.value = current + 1;
+    }
+}
+
+function decrementQuantity() {
+    const input = document.getElementById('quantity');
+    const current = parseInt(input.value);
+    if (current > 1) {
+        input.value = current - 1;
+    }
+}
+
+// Tabs
+function showTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.add('hidden');
+    });
+    
+    // Remove active state from all buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('border-accent');
+        btn.classList.add('border-transparent');
+    });
+    
+    // Show selected tab
+    document.getElementById(tabName + '-tab').classList.remove('hidden');
+    
+    // Update button state
+    event.target.classList.remove('border-transparent');
+    event.target.classList.add('border-accent');
+}
+
+// Video modal
+function showVideo() {
+    document.getElementById('video-modal').classList.remove('hidden');
+}
+
+function closeVideoModal() {
+    document.getElementById('video-modal').classList.add('hidden');
+}
+
+// Wishlist
+function addToWishlist(productId) {
+    fetch(`/products/wishlist/add/${productId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Toggle heart icon
+            const icon = event.target.querySelector('i') || event.target;
+            icon.classList.toggle('far');
+            icon.classList.toggle('fas');
+        }
+    });
+}
+</script>
+{% endblock %}

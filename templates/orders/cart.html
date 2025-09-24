@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+
+{% block title %}Shopping Cart - {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <h1 class="text-3xl font-bold mb-8">Shopping Cart</h1>
+
+    {% if cart_items %}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Cart Items -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-lg shadow">
+                {% for item in cart_items %}
+                <div class="p-6 {% if not forloop.last %}border-b{% endif %}">
+                    <div class="flex items-start space-x-4">
+                        <!-- Product Image -->
+                        <a href="{% url 'products:detail' item.product.slug %}" class="flex-shrink-0">
+                            <img src="{% if item.product.main_image %}{{ item.product.main_image.image.url }}{% else %}https://via.placeholder.com/100x120{% endif %}" 
+                                 alt="{{ item.product.name }}" class="w-24 h-32 object-cover rounded">
+                        </a>
+                        
+                        <!-- Product Info -->
+                        <div class="flex-1">
+                            <h3 class="font-semibold">
+                                <a href="{% url 'products:detail' item.product.slug %}" class="hover:text-accent">
+                                    {{ item.product.name }}
+                                </a>
+                            </h3>
+                            
+                            {% if item.variant %}
+                            <div class="text-sm text-gray-600 mt-1">
+                                Size: {{ item.variant.size }} | Color: {{ item.variant.color }}
+                            </div>
+                            {% endif %}
+                            
+                            <div class="mt-2">
+                                {% if item.product.is_on_sale %}
+                                <span class="text-danger font-semibold">${{ item.unit_price|floatformat:2 }}</span>
+                                <span class="text-gray-400 line-through text-sm ml-2">${{ item.product.base_price|floatformat:2 }}</span>
+                                {% else %}
+                                <span class="font-semibold">${{ item.unit_price|floatformat:2 }}</span>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Quantity Update -->
+                            <div class="flex items-center mt-3 space-x-4">
+                                <form method="post" action="{% url 'orders:update_cart_item' item.id %}" class="flex items-center">
+                                    {% csrf_token %}
+                                    <button type="button" onclick="decrementCartQuantity(this)" 
+                                            class="w-8 h-8 border rounded hover:bg-gray-100">
+                                        <i class="fas fa-minus text-xs"></i>
+                                    </button>
+                                    <input type="number" name="quantity" value="{{ item.quantity }}" min="1" 
+                                           class="w-16 text-center border-t border-b mx-0" readonly>
+                                    <button type="button" onclick="incrementCartQuantity(this)" 
+                                            class="w-8 h-8 border rounded hover:bg-gray-100">
+                                        <i class="fas fa-plus text-xs"></i>
+                                    </button>
+                                    <button type="submit" class="ml-2 text-sm text-accent hover:underline">Update</button>
+                                </form>
+                                
+                                <!-- Remove Button -->
+                                <form method="post" action="{% url 'orders:remove_from_cart' item.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="text-sm text-danger hover:underline">Remove</button>
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <!-- Item Total -->
+                        <div class="text-right">
+                            <div class="font-semibold">${{ item.total_price|floatformat:2 }}</div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Continue Shopping -->
+            <div class="mt-6">
+                <a href="{% url 'products:list' %}" class="inline-flex items-center text-accent hover:underline">
+                    <i class="fas fa-arrow-left mr-2"></i> Continue Shopping
+                </a>
+            </div>
+        </div>
+        
+        <!-- Order Summary -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4">Order Summary</h2>
+                
+                <!-- Coupon Form -->
+                <form method="post" action="{% url 'orders:apply_coupon' %}" class="mb-6">
+                    {% csrf_token %}
+                    <div class="flex">
+                        <input type="text" name="code" placeholder="Coupon code" 
+                               class="flex-1 px-4 py-2 border rounded-l-md focus:outline-none focus:border-accent">
+                        <button type="submit" class="px-4 py-2 bg-gray-900 text-white rounded-r-md hover:bg-accent">
+                            Apply
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Totals -->
+                <div class="space-y-3 mb-6">
+                    <div class="flex justify-between">
+                        <span>Subtotal</span>
+                        <span class="font-semibold">${{ cart.subtotal|floatformat:2 }}</span>
+                    </div>
+                    
+                    {% if cart.discount > 0 %}
+                    <div class="flex justify-between text-success">
+                        <span>Discount</span>
+                        <span>-${{ cart.discount|floatformat:2 }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="flex justify-between">
+                        <span>Shipping</span>
+                        <span>{% if cart.shipping == 0 %}FREE{% else %}${{ cart.shipping|floatformat:2 }}{% endif %}</span>
+                    </div>
+                    
+                    <div class="flex justify-between">
+                        <span>Tax</span>
+                        <span>${{ cart.tax|floatformat:2 }}</span>
+                    </div>
+                    
+                    <div class="border-t pt-3">
+                        <div class="flex justify-between text-xl font-semibold">
+                            <span>Total</span>
+                            <span>${{ cart.total|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Checkout Button -->
+                <a href="{% url 'orders:checkout' %}" 
+                   class="block w-full bg-accent text-white text-center py-3 rounded-md hover:bg-accent/90 font-semibold">
+                    Proceed to Checkout
+                </a>
+                
+                <!-- Security Info -->
+                <div class="mt-4 text-center text-sm text-gray-600">
+                    <i class="fas fa-lock mr-1"></i> Secure Checkout
+                </div>
+            </div>
+            
+            <!-- Trust Badges -->
+            <div class="mt-6 bg-white rounded-lg shadow p-6">
+                <div class="space-y-3 text-sm">
+                    <div class="flex items-start">
+                        <i class="fas fa-check-circle text-success mr-2 mt-0.5"></i>
+                        <span>Free shipping on orders over $50</span>
+                    </div>
+                    <div class="flex items-start">
+                        <i class="fas fa-check-circle text-success mr-2 mt-0.5"></i>
+                        <span>30-day return policy</span>
+                    </div>
+                    <div class="flex items-start">
+                        <i class="fas fa-check-circle text-success mr-2 mt-0.5"></i>
+                        <span>Secure payment processing</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Empty Cart -->
+    <div class="text-center py-16">
+        <i class="fas fa-shopping-cart text-6xl text-gray-300 mb-4"></i>
+        <h2 class="text-2xl font-semibold mb-2">Your cart is empty</h2>
+        <p class="text-gray-600 mb-6">Add some items to get started!</p>
+        <a href="{% url 'products:list' %}" 
+           class="inline-block bg-accent text-white px-8 py-3 rounded-md hover:bg-accent/90 font-semibold">
+            Start Shopping
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Mini Cart (for header dropdown) -->
+<div id="mini-cart" class="hidden absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg z-50">
+    <div class="p-4 border-b">
+        <h3 class="font-semibold">Shopping Cart ({{ cart_count }} items)</h3>
+    </div>
+    
+    <div class="max-h-96 overflow-y-auto">
+        {% for item in cart_items|slice:":3" %}
+        <div class="p-4 flex items-center space-x-3 border-b">
+            <img src="{% if item.product.main_image %}{{ item.product.main_image.image.url }}{% else %}https://via.placeholder.com/60x80{% endif %}" 
+                 alt="{{ item.product.name }}" class="w-12 h-16 object-cover rounded">
+            <div class="flex-1">
+                <h4 class="text-sm font-medium">{{ item.product.name|truncatechars:30 }}</h4>
+                <p class="text-sm text-gray-600">{{ item.quantity }} x ${{ item.unit_price|floatformat:2 }}</p>
+            </div>
+            <div class="text-sm font-semibold">${{ item.total_price|floatformat:2 }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% if cart_items %}
+    <div class="p-4">
+        <div class="flex justify-between mb-3">
+            <span class="font-semibold">Subtotal</span>
+            <span class="font-semibold">${{ cart.subtotal|floatformat:2 }}</span>
+        </div>
+        <div class="space-y-2">
+            <a href="{% url 'orders:cart' %}" class="block w-full text-center py-2 border border-gray-300 rounded hover:bg-gray-50">
+                View Cart
+            </a>
+            <a href="{% url 'orders:checkout' %}" class="block w-full text-center py-2 bg-accent text-white rounded hover:bg-accent/90">
+                Checkout
+            </a>
+        </div>
+    </div>
+    {% else %}
+    <div class="p-4 text-center text-gray-500">
+        Your cart is empty
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function incrementCartQuantity(button) {
+    const input = button.previousElementSibling;
+    input.value = parseInt(input.value) + 1;
+}
+
+function decrementCartQuantity(button) {
+    const input = button.nextElementSibling;
+    if (parseInt(input.value) > 1) {
+        input.value = parseInt(input.value) - 1;
+    }
+}
+</script>
+{% endblock %}

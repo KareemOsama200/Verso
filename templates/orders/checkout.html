@@ -1,0 +1,301 @@
+{% extends 'base.html' %}
+
+{% block title %}Checkout - {{ SITE_NAME }}{% endblock %}
+
+{% block extra_head %}
+<!-- Leaflet CSS for map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <h1 class="text-3xl font-bold mb-8">Checkout</h1>
+    
+    <form method="post" id="checkout-form" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {% csrf_token %}
+        
+        <!-- Left Column: Shipping & Payment -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Shipping Information -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4">Shipping Information</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">First Name *</label>
+                        <input type="text" name="first_name" value="{{ user.first_name }}" required
+                               class="w-full px-4 py-2 border rounded-md focus:outline-none focus:border-accent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Last Name *</label>
+                        <input type="text" name="last_name" value="{{ user.last_name }}" required
+                               class="w-full px-4 py-2 border rounded-md focus:outline-none focus:border-accent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Email *</label>
+                        <input type="email" name="email" value="{{ user.email }}" required
+                               class="w-full px-4 py-2 border rounded-md focus:outline-none focus:border-accent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Phone *</label>
+                        <input type="tel" name="phone_number" value="{{ user.phone_number }}" required
+                               class="w-full px-4 py-2 border rounded-md focus:outline-none focus:border-accent">
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <label class="block text-sm font-medium mb-1">Address *</label>
+                    <textarea name="address" rows="2" required
+                              class="w-full px-4 py-2 border rounded-md focus:outline-none focus:border-accent">{{ user.address }}</textarea>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">City *</label>
+                        <input type="text" name="city" value="{{ user.city }}" required
+                               class="w-full px-4 py-2 border rounded-md focus:outline-none focus:border-accent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">State/Province *</label>
+                        <input type="text" name="state" value="{{ user.state }}" required
+                               class="w-full px-4 py-2 border rounded-md focus:outline-none focus:border-accent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Country *</label>
+                        <input type="text" name="country" value="{{ user.country }}" required
+                               class="w-full px-4 py-2 border rounded-md focus:outline-none focus:border-accent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">ZIP/Postal Code *</label>
+                        <input type="text" name="postal_code" value="{{ user.postal_code }}" required
+                               class="w-full px-4 py-2 border rounded-md focus:outline-none focus:border-accent">
+                    </div>
+                </div>
+                
+                <!-- Location Map -->
+                <div class="mt-4">
+                    <label class="block text-sm font-medium mb-1">
+                        Delivery Location (Optional)
+                        <button type="button" onclick="getCurrentLocation()" 
+                                class="ml-2 text-accent hover:underline text-sm">
+                            <i class="fas fa-location-arrow"></i> Use Current Location
+                        </button>
+                    </label>
+                    <div id="map" class="h-64 rounded-md border"></div>
+                    <input type="hidden" name="latitude" id="latitude" value="{{ user.latitude }}">
+                    <input type="hidden" name="longitude" id="longitude" value="{{ user.longitude }}">
+                </div>
+            </div>
+            
+            <!-- Payment Method -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4">Payment Method</h2>
+                
+                <div class="space-y-3">
+                    <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                        <input type="radio" name="payment_method" value="cod" checked
+                               class="text-accent focus:ring-accent">
+                        <span class="ml-3">
+                            <span class="font-medium">Cash on Delivery</span>
+                            <span class="block text-sm text-gray-600">Pay when you receive your order</span>
+                        </span>
+                    </label>
+                    
+                    <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                        <input type="radio" name="payment_method" value="wallet"
+                               class="text-accent focus:ring-accent">
+                        <span class="ml-3">
+                            <span class="font-medium">Store Wallet</span>
+                            <span class="block text-sm text-gray-600">Balance: ${{ user.wallet_balance|floatformat:2 }}</span>
+                        </span>
+                    </label>
+                    
+                    <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                        <input type="radio" name="payment_method" value="test"
+                               class="text-accent focus:ring-accent">
+                        <span class="ml-3">
+                            <span class="font-medium">Test Payment</span>
+                            <span class="block text-sm text-gray-600">For testing purposes only</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Billing Address -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4">Billing Address</h2>
+                
+                <label class="flex items-center mb-4">
+                    <input type="checkbox" name="billing_same_as_shipping" checked
+                           class="rounded text-accent focus:ring-accent" onchange="toggleBillingAddress()">
+                    <span class="ml-2">Same as shipping address</span>
+                </label>
+                
+                <div id="billing-fields" class="hidden space-y-4">
+                    <!-- Billing fields (same structure as shipping) -->
+                </div>
+            </div>
+            
+            <!-- Order Notes -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-4">Order Notes (Optional)</h2>
+                <textarea name="customer_notes" rows="3" 
+                          placeholder="Special instructions for your order..."
+                          class="w-full px-4 py-2 border rounded-md focus:outline-none focus:border-accent"></textarea>
+            </div>
+        </div>
+        
+        <!-- Right Column: Order Summary -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-lg shadow p-6 sticky top-24">
+                <h2 class="text-xl font-semibold mb-4">Order Summary</h2>
+                
+                <!-- Items -->
+                <div class="space-y-3 mb-6">
+                    {% for item in cart_items %}
+                    <div class="flex justify-between">
+                        <div class="flex-1">
+                            <p class="font-medium">{{ item.product.name|truncatechars:30 }}</p>
+                            <p class="text-sm text-gray-600">
+                                {% if item.variant %}
+                                {{ item.variant.size }} / {{ item.variant.color }} × 
+                                {% endif %}
+                                {{ item.quantity }}
+                            </p>
+                        </div>
+                        <span class="font-medium">${{ item.total_price|floatformat:2 }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Totals -->
+                <div class="space-y-2 border-t pt-4">
+                    <div class="flex justify-between">
+                        <span>Subtotal</span>
+                        <span>${{ cart.subtotal|floatformat:2 }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Shipping</span>
+                        <span>{% if cart.shipping == 0 %}FREE{% else %}${{ cart.shipping|floatformat:2 }}{% endif %}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Tax</span>
+                        <span>${{ cart.tax|floatformat:2 }}</span>
+                    </div>
+                    <div class="flex justify-between text-xl font-semibold border-t pt-2">
+                        <span>Total</span>
+                        <span>${{ cart.total|floatformat:2 }}</span>
+                    </div>
+                </div>
+                
+                <!-- Terms Agreement -->
+                <div class="mt-6">
+                    <label class="flex items-start">
+                        <input type="checkbox" name="agree_terms" required
+                               class="mt-1 rounded text-accent focus:ring-accent">
+                        <span class="ml-2 text-sm text-gray-600">
+                            I agree to the <a href="/terms" class="text-accent hover:underline">Terms of Service</a> 
+                            and <a href="/privacy" class="text-accent hover:underline">Privacy Policy</a>
+                        </span>
+                    </label>
+                </div>
+                
+                <!-- Place Order Button -->
+                <button type="submit" class="w-full mt-6 bg-accent text-white py-3 rounded-md hover:bg-accent/90 font-semibold">
+                    Place Order
+                </button>
+                
+                <!-- Security Badge -->
+                <div class="mt-4 text-center text-sm text-gray-600">
+                    <i class="fas fa-lock mr-1"></i> Your information is secure and encrypted
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet JS for map -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+// Initialize map
+let map;
+let marker;
+
+function initMap() {
+    // Default to user's saved location or NYC
+    const lat = parseFloat(document.getElementById('latitude').value) || 40.7128;
+    const lng = parseFloat(document.getElementById('longitude').value) || -74.0060;
+    
+    map = L.map('map').setView([lat, lng], 13);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    marker = L.marker([lat, lng], {draggable: true}).addTo(map);
+    
+    // Update coordinates when marker is dragged
+    marker.on('dragend', function(e) {
+        const position = marker.getLatLng();
+        document.getElementById('latitude').value = position.lat;
+        document.getElementById('longitude').value = position.lng;
+    });
+    
+    // Click on map to move marker
+    map.on('click', function(e) {
+        marker.setLatLng(e.latlng);
+        document.getElementById('latitude').value = e.latlng.lat;
+        document.getElementById('longitude').value = e.latlng.lng;
+    });
+}
+
+// Get current location
+function getCurrentLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            map.setView([lat, lng], 15);
+            marker.setLatLng([lat, lng]);
+            
+            document.getElementById('latitude').value = lat;
+            document.getElementById('longitude').value = lng;
+            
+            // Reverse geocode to get address (optional)
+            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.display_name) {
+                        // You could auto-fill address fields here
+                        console.log('Location:', data.display_name);
+                    }
+                });
+        }, function(error) {
+            alert('Unable to get your location. Please enter address manually.');
+        });
+    } else {
+        alert('Geolocation is not supported by your browser.');
+    }
+}
+
+// Toggle billing address fields
+function toggleBillingAddress() {
+    const checkbox = document.querySelector('input[name="billing_same_as_shipping"]');
+    const billingFields = document.getElementById('billing-fields');
+    
+    if (checkbox.checked) {
+        billingFields.classList.add('hidden');
+    } else {
+        billingFields.classList.remove('hidden');
+    }
+}
+
+// Initialize map when page loads
+document.addEventListener('DOMContentLoaded', initMap);
+</script>
+{% endblock %}
